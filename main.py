@@ -204,7 +204,7 @@ class App(QMainWindow):
         texto_safe = texto.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ")
         self.webview.page().runJavaScript(f"traduzir('{texto_safe}')")
 
-        self.sinais.status_mudou.emit("Segure  ESPAÇO  para falar", "#888888")
+        self.sinais.status_mudou.emit("Segure  ESPAÇO  para falar", "#0066FF")
 
     def _on_status(self, mensagem, cor):
         self.status_label.setText(mensagem)

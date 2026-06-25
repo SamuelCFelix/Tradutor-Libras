@@ -58,38 +58,38 @@
       ];
       seletores.forEach(function(sel) {
         document.querySelectorAll(sel).forEach(function(el) {
-          el.style.cssText += [
-            ';position:fixed',
-            'bottom:0',
-            'left:0',
-            'top:auto',
-            'width:' + w + 'px',
-            'height:' + h + 'px',
-            'max-width:none',
-            'max-height:none',
-            'overflow:visible',
-            'display:block',
-            'border:none',
-            'border-radius:0',
-            'box-shadow:none',
-          ].join('!important;') + '!important';
+          el.style.cssText = [
+            'position:fixed!important',
+            'top:0!important',
+            'left:0!important',
+            'bottom:auto!important',
+            'width:' + w + 'px!important',
+            'height:' + h + 'px!important',
+            'max-width:none!important',
+            'max-height:none!important',
+            'overflow:visible!important',
+            'display:block!important',
+            'border:none!important',
+            'border-radius:0!important',
+            'box-shadow:none!important',
+          ].join(';');
         });
       });
 
-      // Força o iframe (player 3D) a ocupar tela inteira ancorado embaixo
+      // Força o iframe (player 3D) a ocupar tela inteira ancorado no topo
       document.querySelectorAll('iframe').forEach(function(iframe) {
-        iframe.style.cssText += [
-          ';position:fixed',
-          'bottom:0',
-          'left:0',
-          'top:auto',
-          'width:' + w + 'px',
-          'height:' + h + 'px',
-          'max-width:none',
-          'max-height:none',
-          'border:none',
-          'z-index:9999',
-        ].join('!important;') + '!important';
+        iframe.style.cssText = [
+          'position:fixed!important',
+          'top:0!important',
+          'left:0!important',
+          'bottom:auto!important',
+          'width:' + w + 'px!important',
+          'height:' + h + 'px!important',
+          'max-width:none!important',
+          'max-height:none!important',
+          'border:none!important',
+          'z-index:9999!important',
+        ].join(';');
         iframe.setAttribute('width', w);
         iframe.setAttribute('height', h);
 

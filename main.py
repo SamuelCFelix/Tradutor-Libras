@@ -20,9 +20,7 @@ SAMPLE_RATE = 16000
 CHANNELS = 1
 HTML_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vlibras.html")
 
-# VAD: limiar de energia RMS para detectar voz (ajuste se necessário)
 SILENCE_THRESHOLD = 500
-# Quantidade de chunks silenciosos consecutivos para considerar fim de fala (~1.5s)
 SILENCE_CHUNKS = 24
 
 
@@ -51,8 +49,6 @@ class App(QMainWindow):
 
         self._build_ui()
 
-    # ------------------------------------------------------------------ UI
-
     def _build_ui(self):
         central = QWidget()
         self.setCentralWidget(central)
@@ -71,7 +67,6 @@ class App(QMainWindow):
 
         root.addWidget(splitter)
 
-        # Atualiza status quando o VLibras terminar de carregar
         self.webview.loadFinished.connect(self._on_webview_carregado)
 
     def _barra_status(self):
@@ -158,8 +153,6 @@ class App(QMainWindow):
         layout.addWidget(self.text_area)
         return frame
 
-    # --------------------------------------------------------- Teclado
-
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Space and not event.isAutoRepeat() and not self.modo_ao_vivo:
             self._iniciar_gravacao()
@@ -171,8 +164,6 @@ class App(QMainWindow):
             self._parar_gravacao()
         else:
             super().keyReleaseEvent(event)
-
-    # --------------------------------------------------------- Modo manual
 
     def _iniciar_gravacao(self):
         if self.recording:
@@ -226,8 +217,6 @@ class App(QMainWindow):
             QTimer.singleShot(2000, lambda: self.sinais.status_mudou.emit(
                 "Segure  ESPAÇO  para falar", "#888888"))
 
-    # --------------------------------------------------------- Modo ao vivo
-
     def _toggle_ao_vivo(self):
         if self.modo_ao_vivo:
             self._parar_ao_vivo()
@@ -271,7 +260,7 @@ class App(QMainWindow):
                     frames_fala.append(data.copy())
                     chunks_silencio += 1
                     if chunks_silencio >= SILENCE_CHUNKS:
-                        # Fim da fala — transcreve
+
                         self.sinais.status_mudou.emit("Ao vivo — traduzindo...", "#ffaa00")
                         segmento = frames_fala.copy()
                         frames_fala = []
@@ -284,10 +273,9 @@ class App(QMainWindow):
                         ).start()
                         self.sinais.status_mudou.emit("Ao vivo — ouvindo...", "#ff6600")
 
-    # --------------------------------------------------------- Callbacks
 
     def _on_webview_carregado(self, _ok):
-        # VLibras precisa de alguns segundos extras para inicializar
+
         QTimer.singleShot(4000, lambda: self.sinais.status_mudou.emit(
             "Segure  ESPAÇO  para falar", "#0066FF"
         ))
@@ -307,8 +295,6 @@ class App(QMainWindow):
             f"color: {cor};" if cor != "#888888" else "color: #444466;"
         )
 
-
-# ------------------------------------------------------------------ Main
 
 if __name__ == "__main__":
     QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)

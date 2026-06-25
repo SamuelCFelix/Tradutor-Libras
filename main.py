@@ -20,6 +20,11 @@ SAMPLE_RATE = 16000
 CHANNELS = 1
 HTML_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vlibras.html")
 
+# VAD: limiar de energia RMS para detectar voz (ajuste se necessário)
+SILENCE_THRESHOLD = 500
+# Quantidade de chunks silenciosos consecutivos para considerar fim de fala (~1.5s)
+SILENCE_CHUNKS = 24
+
 
 class Sinais(QObject):
     texto_pronto = pyqtSignal(str)
@@ -36,6 +41,9 @@ class App(QMainWindow):
         self.recording = False
         self.frames = []
         self.recognizer = sr.Recognizer()
+
+        self.modo_ao_vivo = False
+        self._stop_ao_vivo = False
 
         self.sinais = Sinais()
         self.sinais.texto_pronto.connect(self._on_texto)
@@ -63,6 +71,9 @@ class App(QMainWindow):
 
         root.addWidget(splitter)
 
+        # Atualiza status quando o VLibras terminar de carregar
+        self.webview.loadFinished.connect(self._on_webview_carregado)
+
     def _barra_status(self):
         frame = QFrame()
         frame.setFixedHeight(46)
@@ -78,22 +89,30 @@ class App(QMainWindow):
         self.status_label.setFont(QFont("Segoe UI", 12))
         self.status_label.setStyleSheet("color: #666688; margin-left: 6px;")
 
-        btn = QPushButton("Limpar")
-        btn.setFont(QFont("Segoe UI", 11))
-        btn.setCursor(Qt.PointingHandCursor)
-        btn.setStyleSheet("""
+        self.btn_modo = QPushButton("Ao vivo")
+        self.btn_modo.setFont(QFont("Segoe UI", 11))
+        self.btn_modo.setCursor(Qt.PointingHandCursor)
+        self._estilo_btn_inativo = """
             QPushButton {
                 background: #2a2a4a; color: #aaaacc;
                 border: none; padding: 5px 16px; border-radius: 5px;
             }
             QPushButton:hover { background: #3a3a6a; color: white; }
-        """)
-        btn.clicked.connect(self._limpar)
+        """
+        self._estilo_btn_ativo = """
+            QPushButton {
+                background: #6a1a1a; color: #ffaaaa;
+                border: none; padding: 5px 16px; border-radius: 5px;
+            }
+            QPushButton:hover { background: #8a2a2a; color: white; }
+        """
+        self.btn_modo.setStyleSheet(self._estilo_btn_inativo)
+        self.btn_modo.clicked.connect(self._toggle_ao_vivo)
 
         layout.addWidget(self.indicador)
         layout.addWidget(self.status_label)
         layout.addStretch()
-        layout.addWidget(btn)
+        layout.addWidget(self.btn_modo)
         return frame
 
     def _painel_vlibras(self):
@@ -142,18 +161,18 @@ class App(QMainWindow):
     # --------------------------------------------------------- Teclado
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Space and not event.isAutoRepeat():
+        if event.key() == Qt.Key_Space and not event.isAutoRepeat() and not self.modo_ao_vivo:
             self._iniciar_gravacao()
         else:
             super().keyPressEvent(event)
 
     def keyReleaseEvent(self, event):
-        if event.key() == Qt.Key_Space and not event.isAutoRepeat():
+        if event.key() == Qt.Key_Space and not event.isAutoRepeat() and not self.modo_ao_vivo:
             self._parar_gravacao()
         else:
             super().keyReleaseEvent(event)
 
-    # --------------------------------------------------------- Gravação
+    # --------------------------------------------------------- Modo manual
 
     def _iniciar_gravacao(self):
         if self.recording:
@@ -177,12 +196,13 @@ class App(QMainWindow):
         self.sinais.status_mudou.emit("Transcrevendo...", "#ffaa00")
         threading.Thread(target=self._transcrever, daemon=True).start()
 
-    def _transcrever(self):
-        if not self.frames:
+    def _transcrever(self, frames=None):
+        dados = frames if frames is not None else self.frames
+        if not dados:
             self.sinais.status_mudou.emit("Segure  ESPAÇO  para falar", "#888888")
             return
 
-        audio_np = np.concatenate(self.frames, axis=0)
+        audio_np = np.concatenate(dados, axis=0)
         buf = io.BytesIO()
         with wave.open(buf, "wb") as wf:
             wf.setnchannels(CHANNELS)
@@ -197,18 +217,86 @@ class App(QMainWindow):
             texto = self.recognizer.recognize_google(audio, language="pt-BR")
             self.sinais.texto_pronto.emit(texto)
         except sr.UnknownValueError:
-            self.sinais.status_mudou.emit("Não entendi — tente novamente", "#ff6633")
-            QTimer.singleShot(2000, lambda: self.sinais.status_mudou.emit(
-                "Segure  ESPAÇO  para falar", "#888888"))
+            if not self.modo_ao_vivo:
+                self.sinais.status_mudou.emit("Não entendi — tente novamente", "#ff6633")
+                QTimer.singleShot(2000, lambda: self.sinais.status_mudou.emit(
+                    "Segure  ESPAÇO  para falar", "#888888"))
         except sr.RequestError as e:
             self.sinais.status_mudou.emit(f"Erro de rede: {e}", "#ff3333")
             QTimer.singleShot(2000, lambda: self.sinais.status_mudou.emit(
                 "Segure  ESPAÇO  para falar", "#888888"))
 
+    # --------------------------------------------------------- Modo ao vivo
+
+    def _toggle_ao_vivo(self):
+        if self.modo_ao_vivo:
+            self._parar_ao_vivo()
+        else:
+            self._iniciar_ao_vivo()
+
+    def _iniciar_ao_vivo(self):
+        if self.recording:
+            return
+        self.modo_ao_vivo = True
+        self._stop_ao_vivo = False
+        self.btn_modo.setText("Parar ao vivo")
+        self.btn_modo.setStyleSheet(self._estilo_btn_ativo)
+        self.sinais.status_mudou.emit("Ao vivo — ouvindo...", "#ff6600")
+        threading.Thread(target=self._loop_ao_vivo, daemon=True).start()
+
+    def _parar_ao_vivo(self):
+        self._stop_ao_vivo = True
+        self.modo_ao_vivo = False
+        self.btn_modo.setText("Ao vivo")
+        self.btn_modo.setStyleSheet(self._estilo_btn_inativo)
+        self.sinais.status_mudou.emit("Segure  ESPAÇO  para falar", "#888888")
+
+    def _loop_ao_vivo(self):
+        frames_fala = []
+        chunks_silencio = 0
+        falando = False
+
+        with sd.InputStream(samplerate=SAMPLE_RATE, channels=CHANNELS, dtype="int16") as stream:
+            while not self._stop_ao_vivo:
+                data, _ = stream.read(1024)
+                rms = float(np.sqrt(np.mean(data.astype(np.float32) ** 2)))
+
+                if rms > SILENCE_THRESHOLD:
+                    frames_fala.append(data.copy())
+                    chunks_silencio = 0
+                    if not falando:
+                        falando = True
+                        self.sinais.status_mudou.emit("Ao vivo — captando fala...", "#ff4444")
+                elif falando:
+                    frames_fala.append(data.copy())
+                    chunks_silencio += 1
+                    if chunks_silencio >= SILENCE_CHUNKS:
+                        # Fim da fala — transcreve
+                        self.sinais.status_mudou.emit("Ao vivo — traduzindo...", "#ffaa00")
+                        segmento = frames_fala.copy()
+                        frames_fala = []
+                        chunks_silencio = 0
+                        falando = False
+                        threading.Thread(
+                            target=self._transcrever,
+                            args=(segmento,),
+                            daemon=True,
+                        ).start()
+                        self.sinais.status_mudou.emit("Ao vivo — ouvindo...", "#ff6600")
+
     # --------------------------------------------------------- Callbacks
 
+    def _on_webview_carregado(self, _ok):
+        # VLibras precisa de alguns segundos extras para inicializar
+        QTimer.singleShot(4000, lambda: self.sinais.status_mudou.emit(
+            "Segure  ESPAÇO  para falar", "#0066FF"
+        ))
+
     def _on_texto(self, texto):
-        self.text_area.setPlainText(texto)
+        if self.modo_ao_vivo:
+            self.text_area.append(texto)
+        else:
+            self.text_area.setPlainText(texto)
         texto_safe = texto.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ")
         self.webview.page().runJavaScript(f"traduzir('{texto_safe}')")
 
@@ -218,10 +306,6 @@ class App(QMainWindow):
         self.indicador.setStyleSheet(
             f"color: {cor};" if cor != "#888888" else "color: #444466;"
         )
-
-    def _limpar(self):
-        self.text_area.clear()
-        self.webview.page().runJavaScript("mostrarTexto('Sua fala aparecerá aqui após a gravação...')")
 
 
 # ------------------------------------------------------------------ Main

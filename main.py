@@ -228,6 +228,7 @@ class App(QMainWindow):
             return
         self.modo_ao_vivo = True
         self._stop_ao_vivo = False
+        self.text_area.clear()
         self.btn_modo.setText("Parar ao vivo")
         self.btn_modo.setStyleSheet(self._estilo_btn_ativo)
         self.sinais.status_mudou.emit("Ao vivo — ouvindo...", "#ff6600")

@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout, QLabel, QPushButton, QTextEdit, QSplitter, QFrame,
 )
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEngineSettings, QWebEngineProfile
-from PyQt5.QtCore import Qt, QUrl, pyqtSignal, QObject, QTimer
+from PyQt5.QtCore import Qt, QUrl, pyqtSignal, QObject, QTimer, QEvent
 from PyQt5.QtGui import QFont
 
 SAMPLE_RATE = 16000
@@ -48,6 +48,7 @@ class App(QMainWindow):
         self.sinais.status_mudou.connect(self._on_status)
 
         self._build_ui()
+        QApplication.instance().installEventFilter(self)
 
     def _build_ui(self):
         central = QWidget()
@@ -153,17 +154,15 @@ class App(QMainWindow):
         layout.addWidget(self.text_area)
         return frame
 
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Space and not event.isAutoRepeat() and not self.modo_ao_vivo:
-            self._iniciar_gravacao()
-        else:
-            super().keyPressEvent(event)
-
-    def keyReleaseEvent(self, event):
-        if event.key() == Qt.Key_Space and not event.isAutoRepeat() and not self.modo_ao_vivo:
-            self._parar_gravacao()
-        else:
-            super().keyReleaseEvent(event)
+    def eventFilter(self, obj, event):
+        if not self.modo_ao_vivo:
+            if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Space and not event.isAutoRepeat():
+                self._iniciar_gravacao()
+                return True
+            if event.type() == QEvent.KeyRelease and event.key() == Qt.Key_Space and not event.isAutoRepeat():
+                self._parar_gravacao()
+                return True
+        return super().eventFilter(obj, event)
 
     def _iniciar_gravacao(self):
         if self.recording:

@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout,
     QHBoxLayout, QLabel, QPushButton, QTextEdit, QSplitter, QFrame,
 )
-from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEngineSettings
+from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEngineSettings, QWebEngineProfile
 from PyQt5.QtCore import Qt, QUrl, pyqtSignal, QObject, QTimer
 from PyQt5.QtGui import QFont
 
@@ -97,12 +97,22 @@ class App(QMainWindow):
         return frame
 
     def _painel_vlibras(self):
+        profile = QWebEngineProfile.defaultProfile()
+        profile.setHttpUserAgent(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        )
+
         self.webview = QWebEngineView()
         s = self.webview.settings()
         s.setAttribute(QWebEngineSettings.JavascriptEnabled, True)
         s.setAttribute(QWebEngineSettings.LocalContentCanAccessRemoteUrls, True)
         s.setAttribute(QWebEngineSettings.AllowRunningInsecureContent, True)
         s.setAttribute(QWebEngineSettings.WebGLEnabled, True)
+        s.setAttribute(QWebEngineSettings.LocalStorageEnabled, True)
+        s.setAttribute(QWebEngineSettings.FullScreenSupportEnabled, True)
+        s.setAttribute(QWebEngineSettings.PluginsEnabled, True)
         self.webview.load(QUrl.fromLocalFile(HTML_PATH))
         return self.webview
 
@@ -199,12 +209,9 @@ class App(QMainWindow):
 
     def _on_texto(self, texto):
         self.text_area.setPlainText(texto)
-        self.text_area.moveCursor(self.text_area.textCursor().End)
 
         texto_safe = texto.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ")
         self.webview.page().runJavaScript(f"traduzir('{texto_safe}')")
-
-        self.sinais.status_mudou.emit("Segure  ESPAÇO  para falar", "#0066FF")
 
     def _on_status(self, mensagem, cor):
         self.status_label.setText(mensagem)

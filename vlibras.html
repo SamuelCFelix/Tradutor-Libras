@@ -2,36 +2,55 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>VLibras Player</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #f5f5f5; font-family: Arial, sans-serif; }
 
-    html, body {
-      width: 100%;
+    #container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       height: 100%;
-      overflow: hidden;
-      background: #1a1a2e;
+      padding: 32px;
     }
 
-    #msg-status {
-      color: #8888cc;
-      font-family: 'Segoe UI', sans-serif;
-      font-size: 14px;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+    #texto-fala {
+      font-size: 22px;
+      color: #222;
+      line-height: 1.6;
       text-align: center;
-      pointer-events: none;
-      z-index: 1;
+      max-width: 600px;
+      cursor: pointer;
+      padding: 16px;
+      border-radius: 8px;
+      transition: background 0.2s;
     }
 
-    /* Oculta o botão de acesso flutuante */
-    [vw-access-button] { display: none !important; }
+    #texto-fala:hover {
+      background: #e0e8ff;
+    }
+
+    #dica {
+      margin-top: 16px;
+      font-size: 13px;
+      color: #999;
+      text-align: center;
+    }
+
+    #status-vlibras {
+      margin-top: 24px;
+      font-size: 12px;
+      color: #bbb;
+    }
   </style>
 </head>
 <body>
-  <div id="msg-status">Carregando avatar de Libras...<br><small>Aguarde a conexão com VLibras</small></div>
+  <div id="container">
+    <p id="texto-fala">Sua fala aparecerá aqui após a gravação...</p>
+    <p id="dica">Segure ESPAÇO para gravar · Clique no texto para traduzir para Libras</p>
+    <p id="status-vlibras">Carregando VLibras...</p>
+  </div>
 
   <div vw class="enabled">
     <div vw-access-button class="active"></div>
@@ -40,130 +59,39 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/gh/spbgovbr-vlibras/vlibras-portal@sgd/app/vlibras-plugin.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/spbgovbr-vlibras/vlibras-portal@sgd/app/vlibras-plugin.js"
+          onerror="document.getElementById('status-vlibras').textContent='Erro ao carregar VLibras'">
+  </script>
   <script>
     var vlibrasWidget = null;
-    var prontoParaTraduzir = false;
-    var filaPendente = [];
-
-    function ajustarTamanhos() {
-      var w = window.innerWidth;
-      var h = window.innerHeight;
-
-      // Força todos os wrappers do VLibras a ocupar a tela inteira
-      var seletores = [
-        '[vw]',
-        '[vw-plugin-wrapper]',
-        '.vw-plugin-top-wrapper',
-      ];
-      seletores.forEach(function(sel) {
-        document.querySelectorAll(sel).forEach(function(el) {
-          el.style.cssText = [
-            'position:fixed!important',
-            'top:0!important',
-            'left:0!important',
-            'bottom:auto!important',
-            'width:' + w + 'px!important',
-            'height:' + h + 'px!important',
-            'max-width:none!important',
-            'max-height:none!important',
-            'overflow:visible!important',
-            'display:block!important',
-            'border:none!important',
-            'border-radius:0!important',
-            'box-shadow:none!important',
-          ].join(';');
-        });
-      });
-
-      // Força o iframe (player 3D) a ocupar tela inteira ancorado no topo
-      document.querySelectorAll('iframe').forEach(function(iframe) {
-        iframe.style.cssText = [
-          'position:fixed!important',
-          'top:0!important',
-          'left:0!important',
-          'bottom:auto!important',
-          'width:' + w + 'px!important',
-          'height:' + h + 'px!important',
-          'max-width:none!important',
-          'max-height:none!important',
-          'border:none!important',
-          'z-index:9999!important',
-        ].join(';');
-        iframe.setAttribute('width', w);
-        iframe.setAttribute('height', h);
-
-        // Remove overflow de todos os ancestrais
-        var el = iframe.parentElement;
-        while (el && el !== document.body) {
-          el.style.overflow = 'visible';
-          el.style.maxHeight = 'none';
-          el.style.height = h + 'px';
-          el = el.parentElement;
-        }
-      });
-    }
-
-    // Executa repetidamente para ganhar qualquer override do plugin
-    var intervalo = setInterval(ajustarTamanhos, 300);
-
-    // Para de repetir após 15s (plugin já estabilizou)
-    setTimeout(function() {
-      clearInterval(intervalo);
-      // Mantém apenas no resize
-    }, 15000);
-
-    window.addEventListener('resize', ajustarTamanhos);
-
-    // MutationObserver para pegar o iframe logo que é criado
-    var observer = new MutationObserver(function(mutations) {
-      mutations.forEach(function(m) {
-        m.addedNodes.forEach(function(node) {
-          if (node.tagName === 'IFRAME' || (node.querySelectorAll && node.querySelectorAll('iframe').length)) {
-            ajustarTamanhos();
-          }
-        });
-      });
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
 
     try {
       vlibrasWidget = new window.VLibras.Widget('https://www.vlibras.gov.br/app/');
-
-      window.addEventListener('load', function() {
-        setTimeout(function() {
-          var btn = document.querySelector('[vw-access-button]');
-          if (btn) btn.click();
-
-          setTimeout(function() {
-            var el = document.getElementById('msg-status');
-            if (el) el.style.display = 'none';
-            prontoParaTraduzir = true;
-            filaPendente.forEach(function(t) { traduzir(t); });
-            filaPendente = [];
-          }, 2500);
-        }, 1500);
-      });
-
     } catch(e) {
-      var el = document.getElementById('msg-status');
-      if (el) el.innerHTML = 'Erro ao carregar VLibras:<br>' + e.message;
+      document.getElementById('status-vlibras').textContent = 'Erro: ' + e.message;
+    }
+
+    window.addEventListener('load', function() {
+      document.getElementById('status-vlibras').textContent = 'VLibras carregado.';
+      setTimeout(function() {
+        var btn = document.querySelector('[vw-access-button]');
+        if (btn) btn.click();
+        document.getElementById('status-vlibras').textContent = '';
+      }, 1200);
+    });
+
+    function mostrarTexto(texto) {
+      var el = document.getElementById('texto-fala');
+      if (el) el.textContent = texto;
     }
 
     function traduzir(texto) {
-      if (!prontoParaTraduzir) { filaPendente.push(texto); return; }
-      try {
-        if (vlibrasWidget && typeof vlibrasWidget.translate === 'function') {
-          vlibrasWidget.translate(texto); return;
-        }
-        document.querySelectorAll('iframe').forEach(function(iframe) {
-          try {
-            iframe.contentWindow.postMessage(
-              JSON.stringify({ action: 'translate', text: texto }), '*'
-            );
-          } catch(e2) {}
-        });
-      } catch(e) { console.error('traduzir:', e); }
+      mostrarTexto(texto);
+      // Simula o clique no texto para acionar o VLibras normalmente
+      setTimeout(function() {
+        var el = document.getElementById('texto-fala');
+        if (el) el.click();
+      }, 150);
     }
   </script>
 </body>

@@ -54,12 +54,12 @@ class App(QMainWindow):
 
         root.addWidget(self._barra_status())
 
-        splitter = QSplitter(Qt.Vertical)
+        splitter = QSplitter(Qt.Horizontal)
         splitter.setHandleWidth(4)
         splitter.setStyleSheet("QSplitter::handle { background: #2a2a4a; }")
-        splitter.addWidget(self._painel_vlibras())
         splitter.addWidget(self._painel_texto())
-        splitter.setSizes([650, 130])
+        splitter.addWidget(self._painel_vlibras())
+        splitter.setSizes([550, 550])
 
         root.addWidget(splitter)
 
@@ -120,8 +120,8 @@ class App(QMainWindow):
         frame = QFrame()
         frame.setStyleSheet("background: #0e0e1c;")
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(14, 8, 14, 10)
-        layout.setSpacing(4)
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(8)
 
         titulo = QLabel("TEXTO TRANSCRITO")
         titulo.setStyleSheet("color: #44446a; font-size: 10px; letter-spacing: 1px;")
@@ -129,7 +129,7 @@ class App(QMainWindow):
 
         self.text_area = QTextEdit()
         self.text_area.setReadOnly(True)
-        self.text_area.setFont(QFont("Segoe UI", 13))
+        self.text_area.setFont(QFont("Segoe UI", 15))
         self.text_area.setStyleSheet("""
             QTextEdit {
                 background: #0e0e1c; color: #d0d0ff;
@@ -209,7 +209,6 @@ class App(QMainWindow):
 
     def _on_texto(self, texto):
         self.text_area.setPlainText(texto)
-
         texto_safe = texto.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ")
         self.webview.page().runJavaScript(f"traduzir('{texto_safe}')")
 
@@ -222,6 +221,7 @@ class App(QMainWindow):
 
     def _limpar(self):
         self.text_area.clear()
+        self.webview.page().runJavaScript("mostrarTexto('Sua fala aparecerá aqui após a gravação...')")
 
 
 # ------------------------------------------------------------------ Main

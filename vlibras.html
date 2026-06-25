@@ -4,53 +4,25 @@
   <meta charset="UTF-8">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; background: #f5f5f5; font-family: Arial, sans-serif; }
-
-    #container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      padding: 32px;
-    }
-
-    #texto-fala {
-      font-size: 22px;
-      color: #222;
-      line-height: 1.6;
-      text-align: center;
-      max-width: 600px;
-      cursor: pointer;
-      padding: 16px;
-      border-radius: 8px;
-      transition: background 0.2s;
-    }
-
-    #texto-fala:hover {
-      background: #e0e8ff;
-    }
-
-    #dica {
-      margin-top: 16px;
-      font-size: 13px;
-      color: #999;
-      text-align: center;
-    }
+    html, body { width: 100%; height: 100%; background: #1a1a2e; font-family: Arial, sans-serif; }
 
     #status-vlibras {
-      margin-top: 24px;
-      font-size: 12px;
-      color: #bbb;
+      color: #8888cc;
+      font-size: 13px;
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
     }
+
+    /* Texto invisível usado apenas para o VLibras detectar e traduzir */
+    #texto-fala { position: absolute; opacity: 0; pointer-events: none; font-size: 1px; }
   </style>
 </head>
 <body>
-  <div id="container">
-    <p id="texto-fala">Sua fala aparecerá aqui após a gravação...</p>
-    <p id="dica">Segure ESPAÇO para gravar · Clique no texto para traduzir para Libras</p>
-    <p id="status-vlibras">Carregando VLibras...</p>
-  </div>
+  <p id="status-vlibras">Carregando VLibras...</p>
+  <p id="texto-fala"></p>
 
   <div vw class="enabled">
     <div vw-access-button class="active"></div>
@@ -72,11 +44,11 @@
     }
 
     window.addEventListener('load', function() {
-      document.getElementById('status-vlibras').textContent = 'VLibras carregado.';
+      document.getElementById('status-vlibras').style.display = 'none';
+      // Abre o widget automaticamente ao carregar
       setTimeout(function() {
         var btn = document.querySelector('[vw-access-button]');
         if (btn) btn.click();
-        document.getElementById('status-vlibras').textContent = '';
       }, 1200);
     });
 
@@ -87,7 +59,6 @@
 
     function traduzir(texto) {
       mostrarTexto(texto);
-      // Simula o clique no texto para acionar o VLibras normalmente
       setTimeout(function() {
         var el = document.getElementById('texto-fala');
         if (el) el.click();

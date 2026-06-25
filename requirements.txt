@@ -1,5 +1,5 @@
-PyQt5
-PyQtWebEngine
-sounddevice
-numpy
-SpeechRecognition
+PyQt5>=5.15.11
+PyQtWebEngine>=5.15.7
+sounddevice>=0.5.5
+numpy>=2.4.6
+SpeechRecognition>=3.17.0
